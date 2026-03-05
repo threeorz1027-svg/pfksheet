@@ -34,4 +34,20 @@ router.post('/generate', (req, res) => {
   });
 });
 
+// 调试：查看最后一个生成的兑换码（需要密码验证）
+router.get('/last-code', (req, res) => {
+  // 从请求头获取密码（你也可以改成从查询参数获取，但为了简单，这里不加验证，仅临时调试）
+  // 注意：这个接口没有加密码验证，部署后你可以直接访问，但用完建议删除
+  const query = 'SELECT code, type FROM redeem_codes ORDER BY id DESC LIMIT 1';
+  db.get(query, [], (err, row) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    if (!row) {
+      return res.json({ message: '还没有兑换码' });
+    }
+    res.json(row);
+  });
+});
+
 module.exports = router;
