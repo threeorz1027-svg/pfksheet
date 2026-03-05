@@ -18,16 +18,17 @@ const db = new sqlite3.Database(dbPath, (err) => {
 // 创建表
 function createTable() {
   // 创建兑换码表
- const createRedeemCodesTable = `
-  CREATE TABLE IF NOT EXISTS redeem_codes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    code TEXT UNIQUE NOT NULL,
-    type TEXT DEFAULT 'day' NOT NULL,
-    used BOOLEAN DEFAULT 0,
-    expires_at DATETIME,               -- 新增的过期时间字段
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-`;
+  const createRedeemCodesTable = `
+    CREATE TABLE IF NOT EXISTS redeem_codes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      code TEXT UNIQUE NOT NULL,
+      type TEXT DEFAULT 'day' NOT NULL,
+      used BOOLEAN DEFAULT 0,
+      expires_at DATETIME,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `;
+  
   // 创建分类表
   const createCategoriesTable = `
     CREATE TABLE IF NOT EXISTS categories (
@@ -62,7 +63,8 @@ function createTable() {
         console.log('redeem_codes table created successfully.');
         // 检查并添加 type 列（如果不存在）
         addTypeColumnIfNotExists();
-addExpiresAtColumnIfNotExists();
+        // 检查并添加 expires_at 列（如果不存在）
+        addExpiresAtColumnIfNotExists();
       }
     });
     
@@ -169,18 +171,13 @@ function insertSampleItems(categoryId, categoryName) {
 
 // 检查并添加 type 列（如果不存在）
 function addTypeColumnIfNotExists() {
-  // 查询表结构
   db.all("PRAGMA table_info(redeem_codes)", (err, columns) => {
     if (err) {
       console.error('Error checking table structure:', err.message);
       return;
     }
-    
-    // 检查是否存在 type 列
     const hasTypeColumn = columns.some(column => column.name === 'type');
-    
     if (!hasTypeColumn) {
-      // 添加 type 列
       db.run("ALTER TABLE redeem_codes ADD COLUMN type TEXT DEFAULT 'day' NOT NULL", (err) => {
         if (err) {
           console.error('Error adding type column:', err.message);
@@ -194,18 +191,13 @@ function addTypeColumnIfNotExists() {
 
 // 检查并添加 project_prices 表的新字段（如果不存在）
 function addNewColumnsToProjectPrices() {
-  // 查询表结构
   db.all("PRAGMA table_info(project_prices)", (err, columns) => {
     if (err) {
       console.error('Error checking table structure:', err.message);
       return;
     }
-    
-    // 检查是否存在 address 列
     const hasAddressColumn = columns.some(column => column.name === 'address');
-    
     if (!hasAddressColumn) {
-      // 添加 address 列
       db.run("ALTER TABLE project_prices ADD COLUMN address TEXT", (err) => {
         if (err) {
           console.error('Error adding address column:', err.message);
@@ -214,12 +206,8 @@ function addNewColumnsToProjectPrices() {
         }
       });
     }
-    
-    // 检查是否存在 appointment_method 列
     const hasAppointmentMethodColumn = columns.some(column => column.name === 'appointment_method');
-    
     if (!hasAppointmentMethodColumn) {
-      // 添加 appointment_method 列
       db.run("ALTER TABLE project_prices ADD COLUMN appointment_method TEXT", (err) => {
         if (err) {
           console.error('Error adding appointment_method column:', err.message);
@@ -229,6 +217,8 @@ function addNewColumnsToProjectPrices() {
       });
     }
   });
+}
+
 // 检查并添加 expires_at 列（如果不存在）
 function addExpiresAtColumnIfNotExists() {
   db.all("PRAGMA table_info(redeem_codes)", (err, columns) => {
@@ -247,8 +237,6 @@ function addExpiresAtColumnIfNotExists() {
       });
     }
   });
-}
-
 }
 
 // 导出数据库连接
