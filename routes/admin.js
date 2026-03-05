@@ -9,18 +9,18 @@ function calculateExpiresAt(type) {
   const now = new Date();
   switch (type) {
     case 'day':
-      now.setDate(now.getDate() + 1);  // 1天后
+      now.setDate(now.getDate() + 1);
       break;
     case 'week':
-      now.setDate(now.getDate() + 7);  // 7天后
+      now.setDate(now.getDate() + 7);
       break;
     case 'month':
-      now.setMonth(now.getMonth() + 1); // 1个月后
+      now.setMonth(now.getMonth() + 1);
       break;
     default:
       now.setDate(now.getDate() + 1);
   }
-  return now.toISOString(); // 返回 ISO 格式字符串，便于数据库存储
+  return now.toISOString();
 }
 
 // 生成兑换码接口
@@ -42,16 +42,18 @@ router.post('/generate', (req, res) => {
   // 生成8位大写字母数字组合的兑换码
   const code = uuidv4().slice(0, 8).toUpperCase();
   
-  // 插入数据库
+  // 计算过期时间
   const expiresAt = calculateExpiresAt(type);
-const insertSQL = 'INSERT INTO redeem_codes (code, type, expires_at) VALUES (?, ?, ?)';
-db.run(insertSQL, [code, type, expiresAt], function(err) {
-  if (err) {
-    console.error('Error inserting code:', err.message);
-    return res.status(500).json({ error: '生成兑换码失败' });
-  }
-  res.json({ code, type });
+  
+  // 插入数据库
+  const insertSQL = 'INSERT INTO redeem_codes (code, type, expires_at) VALUES (?, ?, ?)';
+  db.run(insertSQL, [code, type, expiresAt], function(err) {
+    if (err) {
+      console.error('Error inserting code:', err.message);
+      return res.status(500).json({ error: '生成兑换码失败' });
+    }
+    res.json({ code, type });
+  });
 });
-
 
 module.exports = router;
