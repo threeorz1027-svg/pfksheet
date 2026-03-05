@@ -4,6 +4,25 @@ const { db } = require('../database');
 
 const router = express.Router();
 
+// 根据类型计算过期时间
+function calculateExpiresAt(type) {
+  const now = new Date();
+  switch (type) {
+    case 'day':
+      now.setDate(now.getDate() + 1);  // 1天后
+      break;
+    case 'week':
+      now.setDate(now.getDate() + 7);  // 7天后
+      break;
+    case 'month':
+      now.setMonth(now.getMonth() + 1); // 1个月后
+      break;
+    default:
+      now.setDate(now.getDate() + 1);
+  }
+  return now.toISOString(); // 返回 ISO 格式字符串，便于数据库存储
+}
+
 // 生成兑换码接口
 router.post('/generate', (req, res) => {
   const { password, type = 'day' } = req.body;
@@ -24,30 +43,15 @@ router.post('/generate', (req, res) => {
   const code = uuidv4().slice(0, 8).toUpperCase();
   
   // 插入数据库
-  const insertSQL = 'INSERT INTO redeem_codes (code, type) VALUES (?, ?)';
-  db.run(insertSQL, [code, type], function(err) {
-    if (err) {
-      console.error('Error inserting code:', err.message);
-      return res.status(500).json({ error: '生成兑换码失败' });
-    }
-    res.json({ code, type });
-  });
+  const expiresAt = calculateExpiresAt(type);
+const insertSQL = 'INSERT INTO redeem_codes (code, type, expires_at) VALUES (?, ?, ?)';
+db.run(insertSQL, [code, type, expiresAt], function(err) {
+  if (err) {
+    console.error('Error inserting code:', err.message);
+    return res.status(500).json({ error: '生成兑换码失败' });
+  }
+  res.json({ code, type });
 });
 
-// 调试：查看最后一个生成的兑换码（需要密码验证）
-router.get('/last-code', (req, res) => {
-  // 从请求头获取密码（你也可以改成从查询参数获取，但为了简单，这里不加验证，仅临时调试）
-  // 注意：这个接口没有加密码验证，部署后你可以直接访问，但用完建议删除
-  const query = 'SELECT code, type FROM redeem_codes ORDER BY id DESC LIMIT 1';
-  db.get(query, [], (err, row) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
-    if (!row) {
-      return res.json({ message: '还没有兑换码' });
-    }
-    res.json(row);
-  });
-});
 
 module.exports = router;

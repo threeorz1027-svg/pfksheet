@@ -12,24 +12,22 @@ router.post('/verify', (req, res) => {
   }
   
   // 检查兑换码是否存在且未使用
-  const checkSQL = 'SELECT * FROM redeem_codes WHERE code = ? AND used = 0';
-  db.get(checkSQL, [code], (err, row) => {
-    if (err) {
-      console.error('Error checking code:', err.message);
-      return res.status(500).json({ error: '验证失败' });
-    }
-    
-    if (!row) {
-      return res.status(404).json({ error: '兑换码不存在或已使用' });
-    }
-    
-    // 更新兑换码为已使用
-    const updateSQL = 'UPDATE redeem_codes SET used = 1 WHERE id = ?';
-    db.run(updateSQL, [row.id], function(err) {
-      if (err) {
-        console.error('Error updating code:', err.message);
-        return res.status(500).json({ error: '兑换失败' });
-      }
+ const now = new Date().toISOString();
+const checkSQL = 'SELECT * FROM redeem_codes WHERE code = ? AND expires_at > ?';
+db.get(checkSQL, [code, now], (err, row) => {
+  if (err) {
+    console.error('Error checking code:', err.message);
+    return res.status(500).json({ error: '验证失败' });
+  }
+  
+  if (!row) {
+    return res.status(404).json({ error: '兑换码无效或已过期' });
+  }
+  
+  // 接下来设置 cookie，不再更新 used
+  // ...
+});
+   
       
       // 根据兑换码类型设置不同的有效期
       let maxAge;

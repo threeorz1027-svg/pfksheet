@@ -18,16 +18,16 @@ const db = new sqlite3.Database(dbPath, (err) => {
 // 创建表
 function createTable() {
   // 创建兑换码表
-  const createRedeemCodesTable = `
-    CREATE TABLE IF NOT EXISTS redeem_codes (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      code TEXT UNIQUE NOT NULL,
-      type TEXT DEFAULT 'day' NOT NULL,
-      used BOOLEAN DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-  `;
-  
+ const createRedeemCodesTable = `
+  CREATE TABLE IF NOT EXISTS redeem_codes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT UNIQUE NOT NULL,
+    type TEXT DEFAULT 'day' NOT NULL,
+    used BOOLEAN DEFAULT 0,
+    expires_at DATETIME,               -- 新增的过期时间字段
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+`;
   // 创建分类表
   const createCategoriesTable = `
     CREATE TABLE IF NOT EXISTS categories (
@@ -62,6 +62,7 @@ function createTable() {
         console.log('redeem_codes table created successfully.');
         // 检查并添加 type 列（如果不存在）
         addTypeColumnIfNotExists();
+addExpiresAtColumnIfNotExists();
       }
     });
     
@@ -228,6 +229,26 @@ function addNewColumnsToProjectPrices() {
       });
     }
   });
+// 检查并添加 expires_at 列（如果不存在）
+function addExpiresAtColumnIfNotExists() {
+  db.all("PRAGMA table_info(redeem_codes)", (err, columns) => {
+    if (err) {
+      console.error('Error checking table structure:', err.message);
+      return;
+    }
+    const hasExpiresAt = columns.some(col => col.name === 'expires_at');
+    if (!hasExpiresAt) {
+      db.run("ALTER TABLE redeem_codes ADD COLUMN expires_at DATETIME", (err) => {
+        if (err) {
+          console.error('Error adding expires_at column:', err.message);
+        } else {
+          console.log('Added expires_at column to redeem_codes table.');
+        }
+      });
+    }
+  });
+}
+
 }
 
 // 导出数据库连接
