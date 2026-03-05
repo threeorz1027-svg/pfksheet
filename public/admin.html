@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理员 - 生成兑换码</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      background-color: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+      color: #555;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 16px;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 4px;
+      text-align: center;
+    }
+    .success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>生成兑换码</h1>
+    <div class="form-group">
+      <label for="password">管理员密码：</label>
+      <input type="password" id="password" placeholder="请输入密码">
+    </div>
+    <div class="form-group">
+      <label for="type">兑换码类型：</label>
+      <select id="type" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 16px;">
+        <option value="day">次卡（1天）</option>
+        <option value="week">周卡（7天）</option>
+        <option value="month">月卡（30天）</option>
+      </select>
+    </div>
+    <button id="generateBtn">生成兑换码</button>
+    <div id="result" class="result"></div>
+  </div>
+  
+  <script>
+    document.getElementById('generateBtn').addEventListener('click', async () => {
+      const password = document.getElementById('password').value;
+      const type = document.getElementById('type').value;
+      const resultDiv = document.getElementById('result');
+      
+      if (!password) {
+        resultDiv.className = 'result error';
+        resultDiv.textContent = '请输入密码';
+        return;
+      }
+      
+      try {
+        const response = await fetch('/api/admin/generate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ password, type })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          let typeText;
+          switch (data.type) {
+            case 'day':
+              typeText = '次卡（1天）';
+              break;
+            case 'week':
+              typeText = '周卡（7天）';
+              break;
+            case 'month':
+              typeText = '月卡（30天）';
+              break;
+          }
+          resultDiv.className = 'result success';
+          resultDiv.innerHTML = `<h3>生成成功！</h3><p>兑换码：<strong>${data.code}</strong></p><p>类型：${typeText}</p>`;
+        } else {
+          resultDiv.className = 'result error';
+          resultDiv.textContent = data.error || '生成失败';
+        }
+      } catch (error) {
+        resultDiv.className = 'result error';
+        resultDiv.textContent = '网络错误，请稍后重试';
+      }
+    });
+  </script>
+</body>
+</html>

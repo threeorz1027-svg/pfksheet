@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>项目价格数据管理 - 韩国医美比价系统</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f5f5f5;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 30px;
+    }
+    .login-section {
+      background-color: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      max-width: 500px;
+      margin: 0 auto 30px;
+      text-align: center;
+    }
+    .login-section input {
+      padding: 10px;
+      width: 80%;
+      margin-bottom: 20px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 16px;
+    }
+    .login-section button {
+      padding: 10px 20px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .login-section button:hover {
+      background-color: #45a049;
+    }
+    .admin-content {
+      display: none;
+    }
+    .card {
+      background-color: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      margin-bottom: 30px;
+    }
+    .section-title {
+      color: #333;
+      margin-top: 0;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 10px;
+    }
+    .template-section {
+      margin-bottom: 30px;
+      padding: 20px;
+      background-color: #f8f9fa;
+      border-radius: 4px;
+    }
+    .template-section p {
+      margin: 0 0 15px 0;
+      color: #666;
+    }
+    .download-btn {
+      background-color: #17a2b8;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .download-btn:hover {
+      background-color: #138496;
+    }
+    .upload-section {
+      margin-bottom: 20px;
+    }
+    .upload-section p {
+      margin: 0 0 15px 0;
+      color: #666;
+    }
+    .file-input-wrapper {
+      margin-bottom: 15px;
+    }
+    .file-input {
+      padding: 10px;
+      border: 2px dashed #ddd;
+      border-radius: 4px;
+      width: 100%;
+      box-sizing: border-box;
+      cursor: pointer;
+    }
+    .file-input:hover {
+      border-color: #2196F3;
+    }
+    .upload-btn {
+      background-color: #2196F3;
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      width: 100%;
+    }
+    .upload-btn:hover {
+      background-color: #0b7dda;
+    }
+    .upload-btn:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+    .status-message {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 4px;
+      font-size: 14px;
+      display: none;
+    }
+    .status-message.loading {
+      background-color: #fff3cd;
+      color: #856404;
+      display: block;
+    }
+    .status-message.success {
+      background-color: #d4edda;
+      color: #155724;
+      display: block;
+    }
+    .status-message.error {
+      background-color: #f8d7da;
+      color: #721c24;
+      display: block;
+    }
+    .error-message {
+      color: #dc3545;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+    .field-list {
+      background-color: #f8f9fa;
+      padding: 15px;
+      border-radius: 4px;
+      margin-top: 15px;
+    }
+    .field-list h4 {
+      margin: 0 0 10px 0;
+      color: #333;
+    }
+    .field-list ul {
+      margin: 0;
+      padding-left: 20px;
+      color: #666;
+    }
+    .field-list li {
+      margin-bottom: 5px;
+    }
+    .back-link {
+      display: inline-block;
+      margin-bottom: 20px;
+      color: #2196F3;
+      text-decoration: none;
+    }
+    .back-link:hover {
+      text-decoration: underline;
+    }
+    
+    /* 数据管理区域 */
+    .data-management {
+      margin-top: 40px;
+    }
+    .data-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .search-box {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .search-input {
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      width: 300px;
+    }
+    .search-btn {
+      background-color: #2196F3;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .search-btn:hover {
+      background-color: #0b7dda;
+    }
+    .add-btn {
+      background-color: #6B4EFF;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .add-btn:hover {
+      background-color: #5a3dff;
+    }
+    
+    /* 表格样式 */
+    .table-container {
+      overflow-x: auto;
+      margin-bottom: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 12px 15px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+    th {
+      background-color: #f8f9fa;
+      font-weight: bold;
+      color: #333;
+      white-space: nowrap;
+    }
+    tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+    tr:hover {
+      background-color: #f5f5f5;
+    }
+    .action-buttons {
+      display: flex;
+      gap: 5px;
+    }
+    .edit-btn, .delete-btn {
+      padding: 5px 10px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .edit-btn {
+      background-color: #ffc107;
+      color: #333;
+    }
+    .delete-btn {
+      background-color: #dc3545;
+      color: white;
+    }
+    .edit-btn:hover {
+      background-color: #e0a800;
+    }
+    .delete-btn:hover {
+      background-color: #c82333;
+    }
+    
+    /* 分页样式 */
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .page-btn {
+      padding: 5px 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background-color: white;
+      cursor: pointer;
+    }
+    .page-btn:hover {
+      background-color: #f8f9fa;
+    }
+    .page-btn.active {
+      background-color: #6B4EFF;
+      color: white;
+      border-color: #6B4EFF;
+    }
+    .page-btn:disabled {
+      background-color: #f8f9fa;
+      color: #ccc;
+      cursor: not-allowed;
+    }
+    .page-info {
+      margin: 0 10px;
+      font-size: 14px;
+      color: #666;
+    }
+    
+    /* 模态框样式 */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+    }
+    .modal-content {
+      background-color: white;
+      margin: 10% auto;
+      padding: 30px;
+      border-radius: 8px;
+      width: 80%;
+      max-width: 600px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .modal-header h3 {
+      margin: 0;
+    }
+    .close-btn {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+      color: #555;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    .form-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .cancel-btn {
+      padding: 10px 20px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background-color: white;
+      cursor: pointer;
+    }
+    .save-btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      background-color: #6B4EFF;
+      color: white;
+      cursor: pointer;
+    }
+    .save-btn:hover {
+      background-color: #5a3dff;
+    }
+    
+    /* 加载状态 */
+    .data-loading {
+      text-align: center;
+      padding: 50px;
+      color: #666;
+    }
+    
+    /* 空数据状态 */
+    .no-data {
+      text-align: center;
+      padding: 50px;
+      color: #666;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>项目价格数据管理</h1>
+    
+    <!-- 登录区域 -->
+    <div class="login-section" id="loginSection">
+      <h2>管理员登录</h2>
+      <input type="password" id="adminPassword" placeholder="请输入管理员密码">
+      <button id="loginBtn">登录</button>
+      <div id="loginError" class="error-message" style="display: none;"></div>
+    </div>
+    
+    <!-- 管理内容区域 -->
+    <div class="admin-content" id="adminContent">
+      <a href="/admin.html" class="back-link">← 返回管理首页</a>
+      
+      <!-- Excel导入区域 -->
+      <div class="card">
+        <h2 class="section-title">Excel数据导入</h2>
+        
+        <div class="template-section">
+          <p>下载Excel模板，按照模板格式填写数据后上传。</p>
+          <button class="download-btn" id="downloadTemplateBtn">下载模板</button>
+          
+          <div class="field-list">
+            <h4>Excel字段说明：</h4>
+            <ul>
+              <li><strong>hospital_name</strong> - 医院名称（必填）</li>
+              <li><strong>category</strong> - 大类（如"光电/仪器"）</li>
+              <li><strong>project_name</strong> - 标准项目名（必填，如"美版热玛吉FLX"）</li>
+              <li><strong>spec</strong> - 关键规格（如"300发"）</li>
+              <li><strong>brand</strong> - 品牌/产地</li>
+              <li><strong>area</strong> - 适用部位</li>
+              <li><strong>price</strong> - 价格（保留原始字符串）</li>
+              <li><strong>raw_category</strong> - 原始类别</li>
+            </ul>
+          </div>
+        </div>
+        
+        <div class="upload-section">
+          <p>选择填写好的Excel文件进行导入。导入将清空现有数据并插入新数据。</p>
+          <div class="file-input-wrapper">
+            <input type="file" id="fileInput" class="file-input" accept=".xlsx,.xls">
+          </div>
+          <button class="upload-btn" id="uploadBtn">上传并导入</button>
+          <div id="statusMessage" class="status-message"></div>
+        </div>
+      </div>
+      
+      <!-- 数据管理区域 -->
+      <div class="card data-management">
+        <h2 class="section-title">数据管理</h2>
+        
+        <div class="data-header">
+          <div class="search-box">
+            <input type="text" id="searchInput" class="search-input" placeholder="搜索关键词...">
+            <button class="search-btn" id="searchBtn">搜索</button>
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <button class="add-btn" id="addBtn">新增记录</button>
+            <button class="add-btn" id="batchDeleteBtn" style="background-color: #dc3545;">批量删除</button>
+            <button class="add-btn" id="batchClearBtn" style="background-color: #ffc107; color: #333;">批量清空</button>
+          </div>
+        </div>
+        
+        <div class="table-container">
+          <div id="dataLoading" class="data-loading" style="display: none;">加载中...</div>
+          <div id="noData" class="no-data" style="display: none;">暂无数据</div>
+          <table id="dataTable" style="display: none;">
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="select-all"></th>
+                <th>医院名称</th>
+                <th>大类</th>
+                <th>项目名称</th>
+                <th>关键规格</th>
+                <th>品牌/产地</th>
+                <th>适用部位</th>
+                <th>价格</th>
+                <th>地址</th>
+                <th>预约方式</th>
+                <th>原始类别</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+        
+        <div class="pagination" id="pagination">
+          <button class="page-btn" id="firstPageBtn">首页</button>
+          <button class="page-btn" id="prevPageBtn">上一页</button>
+          <span class="page-info" id="pageInfo"></span>
+          <button class="page-btn" id="nextPageBtn">下一页</button>
+          <button class="page-btn" id="lastPageBtn">末页</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 新增/编辑模态框 -->
+  <div class="modal" id="dataModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modalTitle">新增记录</h3>
+        <button class="close-btn" id="closeModal">&times;</button>
+      </div>
+      <form id="dataForm">
+        <input type="hidden" id="recordId">
+        <div class="form-group">
+          <label for="hospitalName">医院名称 *</label>
+          <input type="text" id="hospitalName" required>
+        </div>
+        <div class="form-group">
+          <label for="category">大类</label>
+          <input type="text" id="category">
+        </div>
+        <div class="form-group">
+          <label for="projectName">项目名称 *</label>
+          <input type="text" id="projectName" required>
+        </div>
+        <div class="form-group">
+          <label for="spec">关键规格</label>
+          <input type="text" id="spec">
+        </div>
+        <div class="form-group">
+          <label for="brand">品牌/产地</label>
+          <input type="text" id="brand">
+        </div>
+        <div class="form-group">
+          <label for="area">适用部位</label>
+          <input type="text" id="area">
+        </div>
+        <div class="form-group">
+          <label for="price">价格</label>
+          <input type="text" id="price">
+        </div>
+        <div class="form-group">
+          <label for="address">地址</label>
+          <input type="text" id="address">
+        </div>
+        <div class="form-group">
+          <label for="appointmentMethod">预约方式</label>
+          <input type="text" id="appointmentMethod">
+        </div>
+        <div class="form-group">
+          <label for="rawCategory">原始类别</label>
+          <input type="text" id="rawCategory">
+        </div>
+        <div class="form-actions">
+          <button type="button" class="cancel-btn" id="cancelBtn">取消</button>
+          <button type="submit" class="save-btn">保存</button>
+        </div>
+      </form>
+      <div id="formError" class="error-message" style="display: none;"></div>
+    </div>
+  </div>
+  
+  <script>
+    let adminPassword = '';
+    let currentPage = 1;
+    let totalPages = 1;
+    let searchKeyword = '';
+    let currentRecord = null;
+    
+    // 登录按钮点击事件
+    document.getElementById('loginBtn').addEventListener('click', () => {
+      const password = document.getElementById('adminPassword').value;
+      const loginError = document.getElementById('loginError');
+      
+      if (!password) {
+        loginError.textContent = '请输入密码';
+        loginError.style.display = 'block';
+        return;
+      }
+      
+      // 简单验证（实际应该调用API验证）
+      adminPassword = password;
+      document.getElementById('loginSection').style.display = 'none';
+      document.getElementById('adminContent').style.display = 'block';
+      
+      // 加载数据
+      loadData();
+    });
+    
+    // 下载模板按钮点击事件
+    document.getElementById('downloadTemplateBtn').addEventListener('click', async () => {
+      try {
+        const response = await fetch('/api/admin/project-prices/template', {
+          headers: {
+            'X-Admin-Password': adminPassword
+          }
+        });
+        
+        if (response.status === 401) {
+          showStatus('error', '密码错误，请重新登录');
+          document.getElementById('loginSection').style.display = 'block';
+          document.getElementById('adminContent').style.display = 'none';
+          return;
+        }
+        
+        if (!response.ok) {
+          throw new Error('下载模板失败');
+        }
+        
+        // 下载文件
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'project_prices_template.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+      } catch (error) {
+        console.error('Error:', error);
+        showStatus('error', '下载模板失败，请稍后重试');
+      }
+    });
+    
+    // 上传按钮点击事件
+    document.getElementById('uploadBtn').addEventListener('click', async () => {
+      const fileInput = document.getElementById('fileInput');
+      const file = fileInput.files[0];
+      
+      if (!file) {
+        showStatus('error', '请选择Excel文件');
+        return;
+      }
+      
+      // 验证文件类型
+      const allowedTypes = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'];
+      if (!allowedTypes.includes(file.type) && !file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+        showStatus('error', '请上传Excel文件(.xlsx, .xls)');
+        return;
+      }
+      
+      // 验证文件大小（5MB）
+      if (file.size > 5 * 1024 * 1024) {
+        showStatus('error', '文件大小不能超过5MB');
+        return;
+      }
+      
+      // 显示加载状态
+      showStatus('loading', '正在上传并导入数据...');
+      
+      // 创建FormData
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      try {
+        const response = await fetch('/api/admin/project-prices/import', {
+          method: 'POST',
+          headers: {
+            'X-Admin-Password': adminPassword
+          },
+          body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (response.status === 401) {
+          showStatus('error', '密码错误，请重新登录');
+          document.getElementById('loginSection').style.display = 'block';
+          document.getElementById('adminContent').style.display = 'none';
+          return;
+        }
+        
+        if (response.ok && data.success) {
+          showStatus('success', `导入成功！共导入 ${data.stats.success} 条记录（总计 ${data.stats.total} 条，失败 ${data.stats.error} 条）`);
+          // 清空文件选择
+          fileInput.value = '';
+          // 重新加载数据
+          loadData();
+        } else {
+          showStatus('error', data.error || '导入失败');
+        }
+        
+      } catch (error) {
+        console.error('Error:', error);
+        showStatus('error', '上传失败，请检查网络连接后重试');
+      }
+    });
+    
+    // 加载数据
+    async function loadData() {
+      const loading = document.getElementById('dataLoading');
+      const noData = document.getElementById('noData');
+      const dataTable = document.getElementById('dataTable');
+      const tableBody = document.getElementById('tableBody');
+      
+      loading.style.display = 'block';
+      noData.style.display = 'none';
+      dataTable.style.display = 'none';
+      
+      try {
+        const params = new URLSearchParams();
+        params.append('page', currentPage);
+        params.append('limit', 20);
+        if (searchKeyword) {
+          params.append('search', searchKeyword);
+        }
+        
+        const response = await fetch(`/api/admin/project-prices?${params.toString()}`, {
+          headers: {
+            'X-Admin-Password': adminPassword
+          }
+        });
+        
+        if (response.status === 401) {
+          showStatus('error', '密码错误，请重新登录');
+          document.getElementById('loginSection').style.display = 'block';
+          document.getElementById('adminContent').style.display = 'none';
+          return;
+        }
+        
+        if (!response.ok) {
+          throw new Error('获取数据失败');
+        }
+        
+        const data = await response.json();
+        
+        loading.style.display = 'none';
+        
+        if (data.data.length === 0) {
+          noData.style.display = 'block';
+        } else {
+          // 渲染表格
+          tableBody.innerHTML = '';
+          data.data.forEach(item => {
+            const row = document.createElement('tr');
+            row.setAttribute('data-id', item.id);
+            row.innerHTML = `
+              <td><input type="checkbox" class="row-checkbox"></td>
+              <td>${item.hospital_name}</td>
+              <td>${item.category || '-'}</td>
+              <td>${item.project_name}</td>
+              <td>${item.spec || '-'}</td>
+              <td>${item.brand || '-'}</td>
+              <td>${item.area || '-'}</td>
+              <td>${item.price || '-'}</td>
+              <td>${item.address || '-'}</td>
+              <td>${item.appointment_method || '-'}</td>
+              <td>${item.raw_category || '-'}</td>
+              <td>
+                <div class="action-buttons">
+                  <button class="edit-btn" onclick="editRecord(${item.id})">编辑</button>
+                  <button class="delete-btn" onclick="deleteRecord(${item.id})">删除</button>
+                </div>
+              </td>
+            `;
+            tableBody.appendChild(row);
+          });
+          
+          dataTable.style.display = 'table';
+          
+          // 更新分页
+          totalPages = Math.ceil(data.total / 20);
+          updatePagination();
+        }
+        
+      } catch (error) {
+        console.error('Error:', error);
+        loading.style.display = 'none';
+        noData.textContent = '加载失败，请刷新页面重试';
+        noData.style.display = 'block';
+      }
+    }
+    
+    // 更新分页
+    function updatePagination() {
+      const pageInfo = document.getElementById('pageInfo');
+      const firstPageBtn = document.getElementById('firstPageBtn');
+      const prevPageBtn = document.getElementById('prevPageBtn');
+      const nextPageBtn = document.getElementById('nextPageBtn');
+      const lastPageBtn = document.getElementById('lastPageBtn');
+      
+      pageInfo.textContent = `第 ${currentPage} / ${totalPages} 页`;
+      
+      firstPageBtn.disabled = currentPage === 1;
+      prevPageBtn.disabled = currentPage === 1;
+      nextPageBtn.disabled = currentPage === totalPages;
+      lastPageBtn.disabled = currentPage === totalPages;
+    }
+    
+    // 分页按钮点击事件
+    document.getElementById('firstPageBtn').addEventListener('click', () => {
+      if (currentPage > 1) {
+        currentPage = 1;
+        loadData();
+      }
+    });
+    
+    document.getElementById('prevPageBtn').addEventListener('click', () => {
+      if (currentPage > 1) {
+        currentPage--;
+        loadData();
+      }
+    });
+    
+    document.getElementById('nextPageBtn').addEventListener('click', () => {
+      if (currentPage < totalPages) {
+        currentPage++;
+        loadData();
+      }
+    });
+    
+    document.getElementById('lastPageBtn').addEventListener('click', () => {
+      if (currentPage < totalPages) {
+        currentPage = totalPages;
+        loadData();
+      }
+    });
+    
+    // 搜索按钮点击事件
+    document.getElementById('searchBtn').addEventListener('click', () => {
+      searchKeyword = document.getElementById('searchInput').value.trim();
+      currentPage = 1;
+      loadData();
+    });
+    
+    // 回车键搜索
+    document.getElementById('searchInput').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        document.getElementById('searchBtn').click();
+      }
+    });
+    
+    // 全选/取消全选功能
+    document.getElementById('select-all').addEventListener('change', function() {
+      const checkboxes = document.querySelectorAll('.row-checkbox');
+      checkboxes.forEach(checkbox => {
+        checkbox.checked = this.checked;
+      });
+    });
+    
+    // 单个复选框变化时，检查全选状态
+    document.addEventListener('change', function(e) {
+      if (e.target.classList.contains('row-checkbox')) {
+        const checkboxes = document.querySelectorAll('.row-checkbox');
+        const allChecked = Array.from(checkboxes).every(checkbox => checkbox.checked);
+        document.getElementById('select-all').checked = allChecked;
+      }
+    });
+    
+    // 批量删除按钮点击事件
+    document.getElementById('batchDeleteBtn').addEventListener('click', function() {
+      const checkedBoxes = document.querySelectorAll('.row-checkbox:checked');
+      if (checkedBoxes.length === 0) {
+        alert('请至少选择一条记录');
+        return;
+      }
+      
+      if (confirm('确定要删除选中的记录吗？')) {
+        const ids = Array.from(checkedBoxes).map(checkbox => {
+          return parseInt(checkbox.closest('tr').getAttribute('data-id'));
+        });
+        batchDeleteRecords(ids);
+      }
+    });
+    
+    // 批量删除记录
+    async function batchDeleteRecords(ids) {
+      try {
+        const response = await fetch('/api/admin/project-prices/batch', {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Admin-Password': adminPassword
+          },
+          body: JSON.stringify({ ids: ids })
+        });
+        
+        if (response.status === 401) {
+          showStatus('error', '密码错误，请重新登录');
+          document.getElementById('loginSection').style.display = 'block';
+          document.getElementById('adminContent').style.display = 'none';
+          return;
+        }
+        
+        if (!response.ok) {
+          throw new Error('删除失败');
+        }
+        
+        const result = await response.json();
+        if (result.success) {
+          alert(`成功删除 ${result.deletedCount} 条记录`);
+          // 重新加载数据
+          loadData();
+        } else {
+          alert(result.error || '删除失败');
+        }
+        
+      } catch (error) {
+        console.error('Error:', error);
+        alert('删除失败，请稍后重试');
+      }
+    }
+    
+    // 批量清空按钮点击事件
+    document.getElementById('batchClearBtn').addEventListener('click', function() {
+      if (confirm('确定要清空所有项目价格数据吗？此操作不可恢复！')) {
+        batchClearRecords();
+      }
+    });
+    
+    // 批量清空记录
+    async function batchClearRecords() {
+      try {
+        const response = await fetch('/api/admin/project-prices/clear', {
+          method: 'DELETE',
+          headers: {
+            'X-Admin-Password': adminPassword
+          }
+        });
+        
+        if (response.status === 401) {
+          showStatus('error', '密码错误，请重新登录');
+          document.getElementById('loginSection').style.display = 'block';
+          document.getElementById('adminContent').style.display = 'none';
+          return;
+        }
+        
+        if (!response.ok) {
+          throw new Error('清空失败');
+        }
+        
+        const result = await response.json();
+        if (result.success) {
+          alert('成功清空所有数据');
+          // 重新加载数据
+          loadData();
+        } else {
+          alert(result.error || '清空失败');
+        }
+        
+      } catch (error) {
+        console.error('Error:', error);
+        alert('清空失败，请稍后重试');
+      }
+    }
+    
+    // 新增按钮点击事件
+    document.getElementById('addBtn').addEventListener('click', () => {
+      currentRecord = null;
+      document.getElementById('modalTitle').textContent = '新增记录';
+      document.getElementById('recordId').value = '';
+      document.getElementById('hospitalName').value = '';
+      document.getElementById('category').value = '';
+      document.getElementById('projectName').value = '';
+      document.getElementById('spec').value = '';
+      document.getElementById('brand').value = '';
+      document.getElementById('area').value = '';
+      document.getElementById('price').value = '';
+      document.getElementById('address').value = '';
+      document.getElementById('appointmentMethod').value = '';
+      document.getElementById('rawCategory').value = '';
+      document.getElementById('formError').style.display = 'none';
+      document.getElementById('dataModal').style.display = 'block';
+    });
+    
+    // 编辑记录
+    async function editRecord(id) {
+      try {
+        const response = await fetch(`/api/admin/project-prices?page=1&limit=1&search=${id}`, {
+          headers: {
+            'X-Admin-Password': adminPassword
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error('获取记录失败');
+        }
+        
+        const data = await response.json();
+        if (data.data.length === 0) {
+          alert('记录不存在');
+          return;
+        }
+        
+        currentRecord = data.data[0];
+        document.getElementById('modalTitle').textContent = '编辑记录';
+        document.getElementById('recordId').value = currentRecord.id;
+        document.getElementById('hospitalName').value = currentRecord.hospital_name;
+        document.getElementById('category').value = currentRecord.category || '';
+        document.getElementById('projectName').value = currentRecord.project_name;
+        document.getElementById('spec').value = currentRecord.spec || '';
+        document.getElementById('brand').value = currentRecord.brand || '';
+        document.getElementById('area').value = currentRecord.area || '';
+        document.getElementById('price').value = currentRecord.price || '';
+        document.getElementById('address').value = currentRecord.address || '';
+        document.getElementById('appointmentMethod').value = currentRecord.appointment_method || '';
+        document.getElementById('rawCategory').value = currentRecord.raw_category || '';
+        document.getElementById('formError').style.display = 'none';
+        document.getElementById('dataModal').style.display = 'block';
+        
+      } catch (error) {
+        console.error('Error:', error);
+        alert('获取记录失败，请稍后重试');
+      }
+    }
+    
+    // 删除记录
+    function deleteRecord(id) {
+      if (confirm('确定要删除这条记录吗？')) {
+        deleteRecordById(id);
+      }
+    }
+    
+    async function deleteRecordById(id) {
+      try {
+        const response = await fetch(`/api/admin/project-prices/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'X-Admin-Password': adminPassword
+          }
+        });
+        
+        if (response.status === 401) {
+          showStatus('error', '密码错误，请重新登录');
+          document.getElementById('loginSection').style.display = 'block';
+          document.getElementById('adminContent').style.display = 'none';
+          return;
+        }
+        
+        if (!response.ok) {
+          throw new Error('删除失败');
+        }
+        
+        const data = await response.json();
+        if (data.success) {
+          // 重新加载数据
+          loadData();
+        } else {
+          alert(data.error || '删除失败');
+        }
+        
+      } catch (error) {
+        console.error('Error:', error);
+        alert('删除失败，请稍后重试');
+      }
+    }
+    
+    // 关闭模态框
+    document.getElementById('closeModal').addEventListener('click', () => {
+      document.getElementById('dataModal').style.display = 'none';
+    });
+    
+    document.getElementById('cancelBtn').addEventListener('click', () => {
+      document.getElementById('dataModal').style.display = 'none';
+    });
+    
+    // 点击模态框外部关闭
+    window.onclick = function(event) {
+      const modal = document.getElementById('dataModal');
+      if (event.target === modal) {
+        modal.style.display = 'none';
+      }
+    }
+    
+    // 表单提交
+    document.getElementById('dataForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const hospitalName = document.getElementById('hospitalName').value;
+      const category = document.getElementById('category').value;
+      const projectName = document.getElementById('projectName').value;
+      const spec = document.getElementById('spec').value;
+      const brand = document.getElementById('brand').value;
+      const area = document.getElementById('area').value;
+      const price = document.getElementById('price').value;
+      const address = document.getElementById('address').value;
+      const appointmentMethod = document.getElementById('appointmentMethod').value;
+      const rawCategory = document.getElementById('rawCategory').value;
+      const recordId = document.getElementById('recordId').value;
+      const formError = document.getElementById('formError');
+      
+      // 验证必需字段
+      if (!hospitalName || !projectName) {
+        formError.textContent = '医院名称和项目名称为必填字段';
+        formError.style.display = 'block';
+        return;
+      }
+      
+      formError.style.display = 'none';
+      
+      const data = {
+        hospital_name: hospitalName,
+        category: category,
+        project_name: projectName,
+        spec: spec,
+        brand: brand,
+        area: area,
+        price: price,
+        address: address,
+        appointment_method: appointmentMethod,
+        raw_category: rawCategory
+      };
+      
+      try {
+        let response;
+        if (recordId) {
+          // 更新记录
+          response = await fetch(`/api/admin/project-prices/${recordId}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Admin-Password': adminPassword
+            },
+            body: JSON.stringify(data)
+          });
+        } else {
+          // 新增记录
+          response = await fetch('/api/admin/project-prices', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Admin-Password': adminPassword
+            },
+            body: JSON.stringify(data)
+          });
+        }
+        
+        if (response.status === 401) {
+          showStatus('error', '密码错误，请重新登录');
+          document.getElementById('loginSection').style.display = 'block';
+          document.getElementById('adminContent').style.display = 'none';
+          return;
+        }
+        
+        if (!response.ok) {
+          throw new Error('保存失败');
+        }
+        
+        const result = await response.json();
+        if (result.success) {
+          // 关闭模态框
+          document.getElementById('dataModal').style.display = 'none';
+          // 重新加载数据
+          loadData();
+        } else {
+          formError.textContent = result.error || '保存失败';
+          formError.style.display = 'block';
+        }
+        
+      } catch (error) {
+        console.error('Error:', error);
+        formError.textContent = '保存失败，请稍后重试';
+        formError.style.display = 'block';
+      }
+    });
+    
+    // 显示状态消息
+    function showStatus(type, message) {
+      const statusElement = document.getElementById('statusMessage');
+      statusElement.className = 'status-message ' + type;
+      statusElement.textContent = message;
+      
+      // 如果是成功消息，5秒后自动隐藏
+      if (type === 'success') {
+        setTimeout(() => {
+          statusElement.style.display = 'none';
+        }, 5000);
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>兑换码兑换</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      background-color: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+      color: #555;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 16px;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      background-color: #2196F3;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0b7dda;
+    }
+    .content {
+      margin-top: 20px;
+      padding: 20px;
+      border-radius: 4px;
+      background-color: #f9f9f9;
+      min-height: 200px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>兑换码兑换</h1>
+    <div class="form-group">
+      <label for="code">兑换码：</label>
+      <input type="text" id="code" placeholder="请输入兑换码">
+    </div>
+    <button id="redeemBtn">兑换</button>
+    <div id="content" class="content">
+      <p>兑换后内容将显示在这里</p>
+    </div>
+  </div>
+  
+  <script>
+    document.getElementById('redeemBtn').addEventListener('click', async () => {
+      const code = document.getElementById('code').value;
+      const contentDiv = document.getElementById('content');
+      
+      if (!code) {
+        alert('请输入兑换码');
+        return;
+      }
+      
+      try {
+        const response = await fetch('/api/redeem/verify', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ code })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+          // 兑换成功，跳转到项目价格查询页面
+          window.location.href = '/project-search';
+        } else {
+          alert(data.error || '兑换失败');
+        }
+      } catch (error) {
+        alert('网络错误，请稍后重试');
+      }
+    });
+  </script>
+</body>
+</html>
