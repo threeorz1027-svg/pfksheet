@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
   <title>项目价格查询 - 韩国医美比价系统</title>
   <!-- 引入Font Awesome图标库 -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -19,6 +19,9 @@
       background-color: #f8f9fa;
       color: #333;
       line-height: 1.6;
+      font-size: 16px;
+      max-width: 100%;
+      overflow-x: hidden;
     }
     
     .container {
@@ -149,6 +152,7 @@
       border: 2px solid #e1e5e9;
       border-radius: 8px;
       font-size: 14px;
+      min-height: 44px;
       transition: all 0.3s ease;
       background: #fafbfc;
     }
@@ -193,6 +197,12 @@
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
       overflow: hidden;
       margin-top: 20px;
+    }
+    
+    /* 表格横向滚动容器（移动端可左右滑动查看） */
+    .table-responsive {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
     }
     
     /* 结果统计 */
@@ -336,45 +346,105 @@
       color: #6c757d;
     }
     
-    /* 响应式设计 */
+    /* 响应式设计 - 手机竖屏 */
     @media (max-width: 768px) {
+      body {
+        max-width: 100%;
+        overflow-x: hidden;
+      }
+      
       .container {
         padding: 20px 15px;
+        max-width: 100%;
       }
       
       h1 {
-        font-size: 2rem;
+        font-size: 1.75rem;
+      }
+      
+      .subtitle {
+        font-size: 1rem;
       }
       
       .search-card {
         padding: 20px;
       }
       
+      /* 大家都在搜：标签区域换行 */
+      .hot-tags {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+      
+      .tags-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      
+      .tag {
+        margin: 0;
+      }
+      
+      /* 搜索表单单列垂直堆叠，100% 宽，间距 12px */
       .search-form {
         flex-direction: column;
         align-items: stretch;
+        gap: 0;
       }
       
       .form-group {
         min-width: 100%;
+        margin-bottom: 12px;
+      }
+      
+      .form-group:last-of-type {
+        margin-bottom: 12px;
+      }
+      
+      .form-group select,
+      .form-group input {
+        font-size: 16px; /* 防止 iOS 自动缩放 */
+        min-height: 44px;
+        padding: 12px 16px;
       }
       
       .search-btn {
         width: 100%;
         justify-content: center;
+        min-height: 44px;
+        margin-top: 4px;
       }
       
-      .table-container {
+      /* 表格可横向滑动，保留全部列 */
+      .table-responsive {
         overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      
+      .table-container table {
+        min-width: 800px;
+      }
+      
+      .result-count {
+        padding: 12px 16px;
+        font-size: 14px;
       }
       
       th, td {
         padding: 12px 16px;
         font-size: 14px;
       }
+      
+      th {
+        font-size: 13px;
+      }
     }
     
-    /* 移动端优化 */
+    /* 移动端优化 - 小屏 */
     @media (max-width: 480px) {
       .search-card {
         padding: 15px;
@@ -383,11 +453,13 @@
       .form-group select,
       .form-group input {
         padding: 10px 14px;
+        min-height: 44px;
       }
       
       .search-btn {
-        padding: 10px 20px;
+        padding: 12px 20px;
         height: 44px;
+        min-height: 44px;
       }
     }
   </style>
@@ -449,6 +521,7 @@
       </div>
       <div id="resultContainer" style="display: none;">
         <div class="result-count" id="resultCount"></div>
+        <div class="table-responsive">
         <table id="resultTable">
           <thead>
             <tr>
@@ -466,6 +539,7 @@
           </thead>
           <tbody id="tableBody"></tbody>
         </table>
+        </div>
       </div>
     </div>
   </div>
