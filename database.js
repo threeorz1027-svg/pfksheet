@@ -1,23 +1,82 @@
 const sqlite3 = require('sqlite3').verbose();
+const { Pool } = require('pg');
 const path = require('path');
 
-// 根据环境选择数据库路径
-const dbPath = process.env.NODE_ENV === 'production' 
-  ? '/tmp/database.db' 
-  : path.join(__dirname, 'database.db');
-const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error('Error opening database:', err.message);
-  } else {
-    console.log('Connected to the SQLite database.');
-    // 创建表
-    createTable();
-  }
-});
+let db;
 
-// 创建表
-function createTable() {
-  // 创建兑换码表
+if (process.env.DATABASE_URL) {
+  // 生产环境：使用 PostgreSQL (Neon)
+  console.log('Using PostgreSQL (Neon)');
+  db = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+      rejectUnauthorized: false
+    }
+  });
+
+  // 为 pg 添加类似 sqlite3 的 run, get, all 方法
+  const pgDb = db;
+  pgDb.run = async (sql, params, callback) => {
+    try {
+      const res = await pgDb.query(sql, params);
+      if (callback) callback(null, { changes: res.rowCount });
+      return { changes: res.rowCount };
+    } catch (err) {
+      if (callback) callback(err);
+      throw err;
+    }
+  };
+  pgDb.get = async (sql, params, callback) => {
+    try {
+      const res = await pgDb.query(sql, params);
+      const row = res.rows[0];
+      if (callback) callback(null, row);
+      return row;
+    } catch (err) {
+      if (callback) callback(err);
+      throw err;
+    }
+  };
+  pgDb.all = async (sql, params, callback) => {
+    try {
+      const res = await pgDb.query(sql, params);
+      if (callback) callback(null, res.rows);
+      return res.rows;
+    } catch (err) {
+      if (callback) callback(err);
+      throw err;
+    }
+  };
+
+  // 测试连接并创建表
+  (async () => {
+    try {
+      await pgDb.connect();
+      console.log('Connected to PostgreSQL.');
+      await createTablesPostgres(pgDb);
+    } catch (err) {
+      console.error('Error connecting to PostgreSQL:', err);
+    }
+  })();
+
+  module.exports = { db: pgDb };
+} else {
+  // 开发环境：使用 SQLite
+  console.log('Using SQLite (local)');
+  const dbPath = path.join(__dirname, 'database.db');
+  db = new sqlite3.Database(dbPath, (err) => {
+    if (err) {
+      console.error('Error opening SQLite database:', err.message);
+    } else {
+      console.log('Connected to SQLite database.');
+      createTablesSQLite(db);
+    }
+  });
+  module.exports = { db };
+}
+
+// SQLite 建表函数
+function createTablesSQLite(db) {
   const createRedeemCodesTable = `
     CREATE TABLE IF NOT EXISTS redeem_codes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -28,8 +87,6 @@ function createTable() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `;
-  
-  // 创建分类表
   const createCategoriesTable = `
     CREATE TABLE IF NOT EXISTS categories (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -38,8 +95,6 @@ function createTable() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `;
-  
-  // 创建项目表
   const createItemsTable = `
     CREATE TABLE IF NOT EXISTS items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -53,43 +108,86 @@ function createTable() {
       FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE CASCADE
     );
   `;
-  
-  // 执行创建表语句
+  const createProjectPricesTable = `
+    CREATE TABLE IF NOT EXISTS project_prices (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      hospital_name TEXT NOT NULL,
+      category TEXT,
+      project_name TEXT NOT NULL,
+      spec TEXT,
+      brand TEXT,
+      area TEXT,
+      price TEXT,
+      address TEXT,
+      appointment_method TEXT,
+      raw_category TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `;
+
   db.serialize(() => {
     db.run(createRedeemCodesTable, (err) => {
-      if (err) {
-        console.error('Error creating redeem_codes table:', err.message);
-      } else {
-        console.log('redeem_codes table created successfully.');
-        // 检查并添加 type 列（如果不存在）
-        addTypeColumnIfNotExists();
-        // 检查并添加 expires_at 列（如果不存在）
-        addExpiresAtColumnIfNotExists();
-      }
+      if (err) console.error('Error creating redeem_codes table:', err.message);
+      else console.log('redeem_codes table created successfully.');
     });
-    
     db.run(createCategoriesTable, (err) => {
-      if (err) {
-        console.error('Error creating categories table:', err.message);
-      } else {
-        console.log('categories table created successfully.');
-        // 插入示例分类数据
-        insertSampleCategories();
-      }
+      if (err) console.error('Error creating categories table:', err.message);
+      else console.log('categories table created successfully.');
     });
-    
     db.run(createItemsTable, (err) => {
-      if (err) {
-        console.error('Error creating items table:', err.message);
-      } else {
-        console.log('items table created successfully.');
-      }
+      if (err) console.error('Error creating items table:', err.message);
+      else console.log('items table created successfully.');
     });
-    
-    // 创建项目价格表
-    const createProjectPricesTable = `
+    db.run(createProjectPricesTable, (err) => {
+      if (err) console.error('Error creating project_prices table:', err.message);
+      else console.log('project_prices table created successfully.');
+    });
+  });
+}
+
+// PostgreSQL 建表函数
+async function createTablesPostgres(db) {
+  const client = await db.connect();
+  try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS redeem_codes (
+        id SERIAL PRIMARY KEY,
+        code TEXT UNIQUE NOT NULL,
+        type TEXT DEFAULT 'day' NOT NULL,
+        used BOOLEAN DEFAULT FALSE,
+        expires_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('PostgreSQL: redeem_codes table ready.');
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS categories (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        sort_order INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('PostgreSQL: categories table ready.');
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS items (
+        id SERIAL PRIMARY KEY,
+        category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+        hospital_name TEXT NOT NULL,
+        price TEXT,
+        address TEXT,
+        has_chinese_staff BOOLEAN DEFAULT FALSE,
+        sort_order INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('PostgreSQL: items table ready.');
+
+    await client.query(`
       CREATE TABLE IF NOT EXISTS project_prices (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         hospital_name TEXT NOT NULL,
         category TEXT,
         project_name TEXT NOT NULL,
@@ -100,144 +198,13 @@ function createTable() {
         address TEXT,
         appointment_method TEXT,
         raw_category TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
-    `;
-    
-    db.run(createProjectPricesTable, (err) => {
-      if (err) {
-        console.error('Error creating project_prices table:', err.message);
-      } else {
-        console.log('project_prices table created successfully.');
-        // 检查并添加新字段（如果不存在）
-        addNewColumnsToProjectPrices();
-      }
-    });
-  });
-}
-
-// 插入示例分类数据
-function insertSampleCategories() {
-  const categories = [
-    { name: '丽珠兰黑2cc', sort_order: 1 },
-    { name: '丽珠兰白2cc', sort_order: 2 }
-  ];
-  
-  const insertSQL = 'INSERT OR IGNORE INTO categories (name, sort_order) VALUES (?, ?)';
-  
-  categories.forEach(category => {
-    db.run(insertSQL, [category.name, category.sort_order], (err) => {
-      if (err) {
-        console.error('Error inserting category:', err.message);
-      } else {
-        console.log(`Category "${category.name}" inserted successfully.`);
-        // 为每个分类插入示例医院数据
-        if (this.lastID) {
-          insertSampleItems(this.lastID, category.name);
-        }
-      }
-    });
-  });
-}
-
-// 插入示例医院数据
-function insertSampleItems(categoryId, categoryName) {
-  const items = [];
-  
-  if (categoryName === '丽珠兰黑2cc') {
-    items.push(
-      { hospital_name: '首尔整形医院', price: '1200000韩元', address: '首尔江南区', has_chinese_staff: 1, sort_order: 1 },
-      { hospital_name: '釜山医美中心', price: '1000000韩元', address: '釜山釜山区', has_chinese_staff: 0, sort_order: 2 }
-    );
-  } else if (categoryName === '丽珠兰白2cc') {
-    items.push(
-      { hospital_name: '首尔整形医院', price: '1500000韩元', address: '首尔江南区', has_chinese_staff: 1, sort_order: 1 },
-      { hospital_name: '仁川美容诊所', price: '1300000韩元', address: '仁川中区', has_chinese_staff: 1, sort_order: 2 }
-    );
+    `);
+    console.log('PostgreSQL: project_prices table ready.');
+  } catch (err) {
+    console.error('Error creating PostgreSQL tables:', err);
+  } finally {
+    client.release();
   }
-  
-  const insertSQL = 'INSERT INTO items (category_id, hospital_name, price, address, has_chinese_staff, sort_order) VALUES (?, ?, ?, ?, ?, ?)';
-  
-  items.forEach(item => {
-    db.run(insertSQL, [categoryId, item.hospital_name, item.price, item.address, item.has_chinese_staff, item.sort_order], (err) => {
-      if (err) {
-        console.error('Error inserting item:', err.message);
-      } else {
-        console.log(`Item "${item.hospital_name}" inserted successfully.`);
-      }
-    });
-  });
 }
-
-// 检查并添加 type 列（如果不存在）
-function addTypeColumnIfNotExists() {
-  db.all("PRAGMA table_info(redeem_codes)", (err, columns) => {
-    if (err) {
-      console.error('Error checking table structure:', err.message);
-      return;
-    }
-    const hasTypeColumn = columns.some(column => column.name === 'type');
-    if (!hasTypeColumn) {
-      db.run("ALTER TABLE redeem_codes ADD COLUMN type TEXT DEFAULT 'day' NOT NULL", (err) => {
-        if (err) {
-          console.error('Error adding type column:', err.message);
-        } else {
-          console.log('Added type column to redeem_codes table.');
-        }
-      });
-    }
-  });
-}
-
-// 检查并添加 project_prices 表的新字段（如果不存在）
-function addNewColumnsToProjectPrices() {
-  db.all("PRAGMA table_info(project_prices)", (err, columns) => {
-    if (err) {
-      console.error('Error checking table structure:', err.message);
-      return;
-    }
-    const hasAddressColumn = columns.some(column => column.name === 'address');
-    if (!hasAddressColumn) {
-      db.run("ALTER TABLE project_prices ADD COLUMN address TEXT", (err) => {
-        if (err) {
-          console.error('Error adding address column:', err.message);
-        } else {
-          console.log('Added address column to project_prices table.');
-        }
-      });
-    }
-    const hasAppointmentMethodColumn = columns.some(column => column.name === 'appointment_method');
-    if (!hasAppointmentMethodColumn) {
-      db.run("ALTER TABLE project_prices ADD COLUMN appointment_method TEXT", (err) => {
-        if (err) {
-          console.error('Error adding appointment_method column:', err.message);
-        } else {
-          console.log('Added appointment_method column to project_prices table.');
-        }
-      });
-    }
-  });
-}
-
-// 检查并添加 expires_at 列（如果不存在）
-function addExpiresAtColumnIfNotExists() {
-  db.all("PRAGMA table_info(redeem_codes)", (err, columns) => {
-    if (err) {
-      console.error('Error checking table structure:', err.message);
-      return;
-    }
-    const hasExpiresAt = columns.some(col => col.name === 'expires_at');
-    if (!hasExpiresAt) {
-      db.run("ALTER TABLE redeem_codes ADD COLUMN expires_at DATETIME", (err) => {
-        if (err) {
-          console.error('Error adding expires_at column:', err.message);
-        } else {
-          console.log('Added expires_at column to redeem_codes table.');
-        }
-      });
-    }
-  });
-}
-
-// 导出数据库连接
-exports.db = db;
