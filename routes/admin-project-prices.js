@@ -275,79 +275,73 @@ router.put('/:id', verifyAdminPassword, (req, res) => {
   });
 });
 
-// 批量删除记录 DELETE /api/admin/project-prices/batch
-router.delete('/batch', verifyAdminPassword, (req, res) => {
+// 批量删除记录 DELETE /api/admin/project-prices/batch（PostgreSQL：ANY 数组 + async/await）
+router.delete('/batch', verifyAdminPassword, async (req, res) => {
   const { ids } = req.body;
-  
-  // 验证ids参数
+
   if (!ids || !Array.isArray(ids) || ids.length === 0) {
     return res.status(400).json({ error: '请提供有效的id数组' });
   }
-  
-  // 确保ids都是数字
-  const validIds = ids.filter(id => Number.isInteger(id));
+
+  const validIds = ids.map(id => parseInt(id, 10)).filter(n => !isNaN(n));
   if (validIds.length === 0) {
     return res.status(400).json({ error: '请提供有效的id数组' });
   }
-  
-  // 构建SQL语句
-  const placeholders = validIds.map(() => '?').join(',');
-  const deleteSQL = `DELETE FROM project_prices WHERE id IN (${placeholders})`;
-  
-  db.run(deleteSQL, validIds, function(err) {
-    if (err) {
-      console.error('Error deleting records:', err.message);
-      return res.status(500).json({ error: '批量删除失败' });
-    }
-    
+
+  const deleteSQL = 'DELETE FROM project_prices WHERE id = ANY($1::int[])';
+  try {
+    const result = await db.run(deleteSQL, [validIds]);
+    const deletedCount = result && result.changes != null ? result.changes : 0;
     res.json({
       success: true,
-      deletedCount: this.changes,
+      deletedCount,
       message: '批量删除成功'
     });
-  });
+  } catch (err) {
+    console.error('Error deleting records:', err.message);
+    res.status(500).json({ error: '批量删除失败', detail: err.message });
+  }
 });
 
 // 批量清空记录 DELETE /api/admin/project-prices/clear
-router.delete('/clear', verifyAdminPassword, (req, res) => {
-  // 执行清空操作
+router.delete('/clear', verifyAdminPassword, async (req, res) => {
   const deleteSQL = 'DELETE FROM project_prices';
-  
-  db.run(deleteSQL, function(err) {
-    if (err) {
-      console.error('Error clearing records:', err.message);
-      return res.status(500).json({ error: '批量清空失败' });
-    }
-    
+  try {
+    const result = await db.run(deleteSQL, []);
+    const deletedCount = result && result.changes != null ? result.changes : 0;
     res.json({
       success: true,
-      deletedCount: this.changes,
+      deletedCount,
       message: '批量清空成功'
     });
-  });
+  } catch (err) {
+    console.error('Error clearing records:', err.message);
+    res.status(500).json({ error: '批量清空失败', detail: err.message });
+  }
 });
 
-// 删除记录 DELETE /api/admin/project-prices/:id
-router.delete('/:id', verifyAdminPassword, (req, res) => {
-  const id = parseInt(req.params.id);
-  
-  const deleteSQL = 'DELETE FROM project_prices WHERE id = ?';
-  
-  db.run(deleteSQL, [id], function(err) {
-    if (err) {
-      console.error('Error deleting record:', err.message);
-      return res.status(500).json({ error: '删除记录失败' });
-    }
-    
-    if (this.changes === 0) {
+// 删除记录 DELETE /api/admin/project-prices/:id（PostgreSQL：$1 占位符 + async/await）
+router.delete('/:id', verifyAdminPassword, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) {
+    return res.status(400).json({ error: '无效的id' });
+  }
+
+  const deleteSQL = 'DELETE FROM project_prices WHERE id = $1';
+  try {
+    const result = await db.run(deleteSQL, [id]);
+    const changes = result && result.changes != null ? result.changes : 0;
+    if (changes === 0) {
       return res.status(404).json({ error: '记录不存在' });
     }
-    
     res.json({
       success: true,
       message: '记录删除成功'
     });
-  });
+  } catch (err) {
+    console.error('Error deleting record:', err.message);
+    res.status(500).json({ error: '删除记录失败', detail: err.message });
+  }
 });
 
 module.exports = router;
