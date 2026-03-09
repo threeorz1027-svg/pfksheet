@@ -15,126 +15,99 @@ function verifyAdminPassword(req, res, next) {
 }
 
 // Excel导入接口 POST /api/admin/project-prices/import
-router.post('/import', verifyAdminPassword, (req, res) => {
+router.post('/import', verifyAdminPassword, async (req, res) => {
   // 检查是否有文件
   if (!req.file) {
     return res.status(400).json({ error: '请上传Excel文件' });
   }
-  
+
   try {
-    // 解析Excel文件
+    // 1. 解析 Excel 文件
     const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
-    
-    // 检查是否有数据sheet
     const sheetName = workbook.SheetNames[0];
     if (!sheetName) {
       return res.status(400).json({ error: 'Excel文件为空' });
     }
-    
     const worksheet = workbook.Sheets[sheetName];
     const data = xlsx.utils.sheet_to_json(worksheet);
-    
     if (data.length === 0) {
       return res.status(400).json({ error: 'Excel文件中没有数据' });
     }
-    
+
     // 验证必需字段
-  const requiredFields = ['hospital_name', 'project_name'];
-  const firstRow = data[0];
-  const missingFields = requiredFields.filter(field => !(field in firstRow));
-  
-  if (missingFields.length > 0) {
-    return res.status(400).json({ 
-      error: `Excel文件缺少必需字段: ${missingFields.join(', ')}`,
-      expectedFields: ['hospital_name', 'category', 'project_name', 'spec', 'brand', 'area', 'price', 'address', 'appointment_method', 'raw_category']
-    });
-  }
-    
-    // 清空表并插入新数据
-    db.serialize(() => {
-      // 开始事务
-      db.run('BEGIN TRANSACTION');
-      
-      // 清空表
-      db.run('DELETE FROM project_prices', (err) => {
-        if (err) {
-          console.error('Error clearing table:', err.message);
-          db.run('ROLLBACK');
-          return res.status(500).json({ error: '清空表失败' });
-        }
-        
-        // 准备插入语句
-        const insertSQL = `
-          INSERT INTO project_prices 
-          (hospital_name, category, project_name, spec, brand, area, price, address, appointment_method, raw_category) 
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `;
-        
-        const stmt = db.prepare(insertSQL);
-        let successCount = 0;
-        let errorCount = 0;
-        
-        // 插入数据
-        data.forEach((row, index) => {
-          const hospital_name = row.hospital_name || '';
-          const category = row.category || '';
-          const project_name = row.project_name || '';
-          const spec = row.spec || '';
-          const brand = row.brand || '';
-          const area = row.area || '';
-          const price = row.price || '';
-          const address = row.address || '';
-          const appointment_method = row.appointment_method || '';
-          const raw_category = row.raw_category || '';
-          
-          if (!hospital_name || !project_name) {
-            errorCount++;
-            console.warn(`Row ${index + 2} skipped: missing hospital_name or project_name`);
-            return;
-          }
-          
-          stmt.run([hospital_name, category, project_name, spec, brand, area, price, address, appointment_method, raw_category], (err) => {
-            if (err) {
-              errorCount++;
-              console.error(`Error inserting row ${index + 2}:`, err.message);
-            } else {
-              successCount++;
-            }
-          });
-        });
-        
-        stmt.finalize((err) => {
-          if (err) {
-            console.error('Error finalizing statement:', err.message);
-            db.run('ROLLBACK');
-            return res.status(500).json({ error: '导入失败' });
-          }
-          
-          // 提交事务
-          db.run('COMMIT', (err) => {
-            if (err) {
-              console.error('Error committing transaction:', err.message);
-              db.run('ROLLBACK');
-              return res.status(500).json({ error: '提交事务失败' });
-            }
-            
-            res.json({
-              success: true,
-              message: '导入成功',
-              stats: {
-                total: data.length,
-                success: successCount,
-                error: errorCount
-              }
-            });
-          });
-        });
+    const requiredFields = ['hospital_name', 'project_name'];
+    const firstRow = data[0];
+    const missingFields = requiredFields.filter(field => !(field in firstRow));
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        error: `Excel文件缺少必需字段: ${missingFields.join(', ')}`,
+        expectedFields: ['hospital_name', 'category', 'project_name', 'spec', 'brand', 'area', 'price', 'address', 'appointment_method', 'raw_category']
       });
-    });
-    
+    }
+
+    // 2. 获取数据库连接（用于事务）
+    const client = await db.connect();
+    let successCount = 0;
+    let errorCount = 0;
+
+    try {
+      await client.query('BEGIN');
+      await client.query('DELETE FROM project_prices');
+
+      const insertSQL = `
+        INSERT INTO project_prices
+        (hospital_name, category, project_name, spec, brand, area, price, address, appointment_method, raw_category)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      `;
+
+      for (let index = 0; index < data.length; index++) {
+        const row = data[index];
+        const hospital_name = (row.hospital_name || '').toString().trim();
+        const project_name = (row.project_name || '').toString().trim();
+        if (!hospital_name || !project_name) {
+          errorCount++;
+          console.warn(`Row ${index + 2} skipped: missing hospital_name or project_name`);
+          continue;
+        }
+        try {
+          await client.query(insertSQL, [
+            hospital_name,
+            (row.category || '').toString(),
+            project_name,
+            (row.spec || '').toString(),
+            (row.brand || '').toString(),
+            (row.area || '').toString(),
+            (row.price || '').toString(),
+            (row.address || '').toString(),
+            (row.appointment_method || '').toString(),
+            (row.raw_category || '').toString()
+          ]);
+          successCount++;
+        } catch (err) {
+          errorCount++;
+          console.error(`Error inserting row ${index + 2}:`, err.message);
+        }
+      }
+
+      await client.query('COMMIT');
+      res.json({
+        success: true,
+        message: '导入成功',
+        stats: {
+          total: data.length,
+          success: successCount,
+          error: errorCount
+        }
+      });
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw err;
+    } finally {
+      client.release();
+    }
   } catch (error) {
-    console.error('Error processing Excel file:', error.message);
-    res.status(500).json({ error: '处理Excel文件失败: ' + error.message });
+    console.error('Import error:', error);
+    res.status(500).json({ error: '导入失败: ' + (error.message || '处理Excel文件失败') });
   }
 });
 
