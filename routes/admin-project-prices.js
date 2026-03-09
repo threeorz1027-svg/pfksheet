@@ -172,51 +172,45 @@ router.get('/template', verifyAdminPassword, (req, res) => {
 });
 
 // 获取记录列表 GET /api/admin/project-prices
-router.get('/', verifyAdminPassword, (req, res) => {
+router.get('/', verifyAdminPassword, async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 20;
-  const search = req.query.search || '';
+  const search = (req.query.search || '').trim();
   const offset = (page - 1) * limit;
-  
-  let query = 'SELECT * FROM project_prices';
-  let countQuery = 'SELECT COUNT(*) as total FROM project_prices';
-  const params = [];
-  
-  if (search) {
-    const searchTerm = `%${search}%`;
-    const searchCondition = ' WHERE hospital_name LIKE ? OR category LIKE ? OR project_name LIKE ? OR spec LIKE ? OR brand LIKE ? OR area LIKE ? OR price LIKE ? OR address LIKE ? OR appointment_method LIKE ? OR raw_category LIKE ?';
-    query += searchCondition;
-    countQuery += searchCondition;
-    params.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm);
-  }
-  
-  query += ' ORDER BY id DESC LIMIT ? OFFSET ?';
-  params.push(limit, offset);
-  
-  // 执行计数查询
-  db.get(countQuery, params.slice(0, params.length - 2), (err, countResult) => {
-    if (err) {
-      console.error('Error counting records:', err.message);
-      return res.status(500).json({ error: '获取数据失败' });
+
+  try {
+    let countQuery = 'SELECT COUNT(*) as total FROM project_prices';
+    let dataQuery = 'SELECT * FROM project_prices';
+    let countParams = [];
+    let dataParams = [];
+
+    if (search) {
+      const searchTerm = `%${search}%`;
+      // PostgreSQL 占位符 $1..$10
+      const searchCondition = ' WHERE hospital_name ILIKE $1 OR category ILIKE $2 OR project_name ILIKE $3 OR spec ILIKE $4 OR brand ILIKE $5 OR area ILIKE $6 OR price ILIKE $7 OR address ILIKE $8 OR appointment_method ILIKE $9 OR raw_category ILIKE $10';
+      countQuery += searchCondition;
+      countParams = [searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm];
+      dataQuery += searchCondition + ' ORDER BY id DESC LIMIT $11 OFFSET $12';
+      dataParams = [...countParams, limit, offset];
+    } else {
+      dataQuery += ' ORDER BY id DESC LIMIT $1 OFFSET $2';
+      dataParams = [limit, offset];
     }
-    
-    const total = countResult.total || 0;
-    
-    // 执行数据查询
-    db.all(query, params, (err, rows) => {
-      if (err) {
-        console.error('Error fetching records:', err.message);
-        return res.status(500).json({ error: '获取数据失败' });
-      }
-      
-      res.json({
-        data: rows,
-        total: total,
-        page: page,
-        limit: limit
-      });
+
+    const countResult = await db.get(countQuery, countParams);
+    const total = countResult ? Number(countResult.total) : 0;
+    const rows = await db.all(dataQuery, dataParams);
+
+    res.json({
+      data: rows || [],
+      total,
+      page,
+      limit
     });
-  });
+  } catch (err) {
+    console.error('Error fetching records:', err.message);
+    res.status(500).json({ error: '获取数据失败' });
+  }
 });
 
 // 新增记录 POST /api/admin/project-prices
