@@ -209,7 +209,7 @@ router.get('/', verifyAdminPassword, async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching records:', err.message);
-    res.status(500).json({ error: '获取数据失败' });
+    res.status(500).json({ error: '获取数据失败', detail: err.message });
   }
 });
 
