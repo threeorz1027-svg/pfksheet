@@ -11,12 +11,28 @@ function checkRedeemedCookie(req, res, next) {
   }
 }
 
-// 获取筛选选项 GET /api/project-prices/options（PostgreSQL：单引号空串 + async/await）
+// 获取筛选选项 GET /api/project-prices/options（去重、去空、TRIM 避免空格导致缺失）
 router.get('/options', checkRedeemedCookie, async (req, res) => {
-  // PostgreSQL 中字符串用单引号，空串为 ''
-  const categoriesQuery = "SELECT DISTINCT category FROM project_prices WHERE category IS NOT NULL AND category != '' ORDER BY category";
-  const projectsQuery = "SELECT DISTINCT project_name FROM project_prices WHERE project_name IS NOT NULL AND project_name != '' ORDER BY project_name";
-  const mappingQuery = 'SELECT DISTINCT category, project_name FROM project_prices WHERE category IS NOT NULL AND project_name IS NOT NULL ORDER BY category, project_name';
+  // 使用 TRIM 保证前后空格不影响去重，且空串/纯空格排除
+  const categoriesQuery = `
+    SELECT DISTINCT TRIM(category) AS category
+    FROM project_prices
+    WHERE category IS NOT NULL AND TRIM(category) != ''
+    ORDER BY category
+  `;
+  const projectsQuery = `
+    SELECT DISTINCT TRIM(project_name) AS project_name
+    FROM project_prices
+    WHERE project_name IS NOT NULL AND TRIM(project_name) != ''
+    ORDER BY project_name
+  `;
+  const mappingQuery = `
+    SELECT DISTINCT TRIM(category) AS category, TRIM(project_name) AS project_name
+    FROM project_prices
+    WHERE category IS NOT NULL AND project_name IS NOT NULL
+      AND TRIM(category) != '' AND TRIM(project_name) != ''
+    ORDER BY category, project_name
+  `;
 
   try {
     const categoriesRows = await db.all(categoriesQuery, []);
@@ -24,18 +40,17 @@ router.get('/options', checkRedeemedCookie, async (req, res) => {
     const mappings = await db.all(mappingQuery, []);
 
     const projectsByCategory = {};
-    mappings.forEach(row => {
-      if (!projectsByCategory[row.category]) {
-        projectsByCategory[row.category] = [];
-      }
-      if (!projectsByCategory[row.category].includes(row.project_name)) {
-        projectsByCategory[row.category].push(row.project_name);
-      }
+    (mappings || []).forEach(row => {
+      const cat = row.category;
+      const proj = row.project_name;
+      if (!cat || !proj) return;
+      if (!projectsByCategory[cat]) projectsByCategory[cat] = [];
+      if (!projectsByCategory[cat].includes(proj)) projectsByCategory[cat].push(proj);
     });
 
     res.json({
-      categories: (categoriesRows || []).map(c => c.category),
-      projects: (projectsRows || []).map(p => p.project_name),
+      categories: (categoriesRows || []).map(c => c.category).filter(Boolean),
+      projects: (projectsRows || []).map(p => p.project_name).filter(Boolean),
       projectsByCategory
     });
   } catch (err) {
@@ -44,7 +59,7 @@ router.get('/options', checkRedeemedCookie, async (req, res) => {
   }
 });
 
-// 查询接口 GET /api/project-prices（PostgreSQL：$1,$2... 占位符 + async/await）
+// 查询接口 GET /api/project-prices（TRIM 匹配下拉选项 + 关键词搜 project_name/hospital_name/category 等）
 router.get('/', checkRedeemedCookie, async (req, res) => {
   const { category, project, search } = req.query;
   let query = 'SELECT * FROM project_prices WHERE 1=1';
@@ -53,16 +68,18 @@ router.get('/', checkRedeemedCookie, async (req, res) => {
 
   if (category && category !== 'all') {
     paramIndex++;
-    query += ` AND category = $${paramIndex}`;
+    query += ` AND TRIM(category) = $${paramIndex}`;
     params.push(category);
   }
   if (project && project !== 'all') {
     paramIndex++;
-    query += ` AND project_name = $${paramIndex}`;
+    query += ` AND TRIM(project_name) = $${paramIndex}`;
     params.push(project);
   }
-  if (search && (search || '').trim()) {
-    const searchTerm = `%${(search || '').trim()}%`;
+  const searchTrimmed = (search || '').trim();
+  if (searchTrimmed) {
+    const searchTerm = `%${searchTrimmed}%`;
+    // 关键词搜索：规格、品牌、部位、价格、项目名、医院名、大类
     paramIndex++;
     query += ` AND (spec ILIKE $${paramIndex}`;
     paramIndex++;
@@ -70,8 +87,14 @@ router.get('/', checkRedeemedCookie, async (req, res) => {
     paramIndex++;
     query += ` OR area ILIKE $${paramIndex}`;
     paramIndex++;
-    query += ` OR price ILIKE $${paramIndex})`;
-    params.push(searchTerm, searchTerm, searchTerm, searchTerm);
+    query += ` OR price ILIKE $${paramIndex}`;
+    paramIndex++;
+    query += ` OR project_name ILIKE $${paramIndex}`;
+    paramIndex++;
+    query += ` OR hospital_name ILIKE $${paramIndex}`;
+    paramIndex++;
+    query += ` OR category ILIKE $${paramIndex})`;
+    params.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm);
   }
 
   query += ' ORDER BY hospital_name, project_name';

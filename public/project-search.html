@@ -586,23 +586,30 @@
           throw new Error('获取筛选选项失败');
         }
         
-        filterOptions = await response.json();
-        
-        // 填充大类下拉框
+        const data = await response.json();
+        filterOptions = {
+          categories: Array.isArray(data.categories) ? data.categories : [],
+          projects: Array.isArray(data.projects) ? data.projects : [],
+          projectsByCategory: data.projectsByCategory && typeof data.projectsByCategory === 'object' ? data.projectsByCategory : {}
+        };
+
+        // 填充大类下拉框（仅追加，保留首项「全部大类」）
         const categorySelect = document.getElementById('categorySelect');
-        filterOptions.categories.forEach(category => {
+        (filterOptions.categories || []).forEach(category => {
+          if (category == null || category === '') return;
           const option = document.createElement('option');
-          option.value = category;
-          option.textContent = category;
+          option.value = String(category);
+          option.textContent = String(category);
           categorySelect.appendChild(option);
         });
-        
+
         // 填充项目下拉框
         const projectSelect = document.getElementById('projectSelect');
-        filterOptions.projects.forEach(project => {
+        (filterOptions.projects || []).forEach(project => {
+          if (project == null || project === '') return;
           const option = document.createElement('option');
-          option.value = project;
-          option.textContent = project;
+          option.value = String(project);
+          option.textContent = String(project);
           projectSelect.appendChild(option);
         });
         
